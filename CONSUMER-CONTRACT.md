@@ -48,6 +48,8 @@ The framework assumes these files exist under `{PRODUCT_ROOT}`:
 | `{PRODUCT_ROOT}/planning-mds/knowledge-graph/code-index.yaml` | Implementation-file index per entity |
 | `{PRODUCT_ROOT}/planning-mds/knowledge-graph/solution-ontology.yaml` | Role ownership per layer; consumed by `validate_templates.py` |
 | `{PRODUCT_ROOT}/planning-mds/knowledge-graph/symbol-index.yaml` | Symbol-level layer (methods, classes, functions) extracted from declared code paths. Required once product implementation has begun; omit during framework-bootstrap stage. |
+| `{PRODUCT_ROOT}/planning-mds/knowledge-graph/decisions-index.yaml` | Inline decision marker layer (`// WHY:`, `// DECISION:`, `// TRADEOFF:`, `// SUPERSEDES:`) harvested from declared code paths. Optional — present once inline decision markers exist in product code. |
+| `{PRODUCT_ROOT}/planning-mds/knowledge-graph/coverage-report.yaml` | KG coverage roll-up produced by `validate.py --write-coverage-report`. May include additive Phase 3 freshness fields per canonical node — `hotspot_rank`, `hotspot_score`, `primary_owner`, `primary_owner_pct`, `bus_factor_flag`, `last_modified` — when `scripts/kg/hotspots.py` is wired in. Consumers may omit any of these; reviewers/architect/security only act on fields that are present. |
 | `{PRODUCT_ROOT}/planning-mds/features/REGISTRY.md` | Authoritative feature registry |
 | `{PRODUCT_ROOT}/planning-mds/features/ROADMAP.md` | Active/planned feature sequencing |
 | `{PRODUCT_ROOT}/lifecycle-stage.yaml` | Product-local lifecycle gates (distinct from the framework-local file in this repo) |
@@ -125,8 +127,10 @@ A product's lifecycle file must declare each gate with an explicit `command:` li
 
 **Product-local validations** live in the product repo and must be runnable with no `agents/**` directory present:
 
-- `{PRODUCT_ROOT}/scripts/kg/validate.py` (knowledge-graph sync; `--check-symbols` validates the symbol layer)
+- `{PRODUCT_ROOT}/scripts/kg/validate.py` (knowledge-graph sync; `--check-symbols` validates the symbol layer, `--check-decisions` validates the inline decision marker layer)
 - `{PRODUCT_ROOT}/scripts/kg/symbols.py` (symbol-index generator; invoked directly or via `validate.py --regenerate-symbols`)
+- `{PRODUCT_ROOT}/scripts/kg/decisions.py` (inline decision marker harvester; invoked directly or via `validate.py --regenerate-decisions`)
+- `{PRODUCT_ROOT}/scripts/kg/risk.py` (Phase 4 risk-score aggregator; combines blast/hotspot/cochange/ownership/test-gap into a 0–10 score per canonical node, file, or symbol — pre-flight gate, not authoritative)
 - `{PRODUCT_ROOT}/planning-mds/testing/validate-nebula-api-contract.py` (solution contract)
 - `{PRODUCT_ROOT}/planning-mds/testing/validate-frontend-quality-gate.py` (frontend quality)
 - Additional product-local equivalents for `api_contract`, `infra_strict`, `security_planning_strict` as each product matures

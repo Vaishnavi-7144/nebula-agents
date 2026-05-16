@@ -61,6 +61,14 @@ Execute these review agents **in parallel**:
    - Validate frontend UX rule-set compliance when UI code changed
    - Treat a non-obvious change without `// WHY:` (or language equivalent) as a blocker
    - If inline decision markers changed, require `python3 {PRODUCT_ROOT}/scripts/kg/validate.py --regenerate-decisions --check-decisions` evidence
+   - When `coverage-report.yaml` carries Phase 3 freshness signals, apply hotspot/ownership gates per touched node:
+     - `hotspot_rank` ≤ 5 (or `hotspot_score` ≥ 0.80) → require explicit second-reviewer evidence
+     - `bus_factor_flag: true` → require `primary_owner` acknowledgement on the PR
+     - Thresholds and examples: `agents/architect/references/hotspot-review-guide.md`
+   - Run `python3 {PRODUCT_ROOT}/scripts/kg/risk.py <node-id|--file|--symbol>` for each touched canonical node and apply the risk gates:
+     - `kg.risk` ≥ 7 (high band) → require an additional reviewer beyond the PR author
+     - `kg.risk` ≥ 9 (critical band) → require a `workstate.py decision --topic risk-acknowledgement` entry referenced from the PR before merge
+     - Treat each `reviewer_recommendations[]` entry as a checklist item; weights/bands live in `agents/architect/references/risk-scoring-guide.md`
 
 4. **Produce code review report:**
    ```markdown

@@ -183,6 +183,8 @@ Review code and configuration for:
 - Dependency and package hygiene
 - HTTPS and certificate expectations
 
+When `{PRODUCT_ROOT}/planning-mds/knowledge-graph/coverage-report.yaml` carries Phase 3 hotspot signals, scope a targeted threat-model pass for hotspot files near auth or policy boundaries (`role:*`, `policy_rule:*`, authentication/session services). Thresholds and customers/orders examples: `agents/architect/references/hotspot-review-guide.md`.
+
 ### Step 5: Execute Available Security Scripts (Feedback Loop)
 
 Run what exists in `agents/security/scripts/`:
