@@ -329,8 +329,8 @@ Also run `lookup.py --symbol <name>` (or `hint.py --symbol <name>`) before editi
 
 **Documentation:**
 - Component JSDoc comments
+- Emit `// WHY:` or `* @why` on non-obvious choices; skip self-explanatory code.
 - README with setup instructions
-- Storybook documentation (optional)
 
 ## Definition of Done
 

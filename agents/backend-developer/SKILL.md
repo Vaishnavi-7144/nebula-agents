@@ -294,6 +294,7 @@ node, so the edit stays narrow and avoids re-reading the full file.
 
 **Documentation:**
 - XML comments on public APIs
+- Emit `// WHY:` on non-obvious choices (workarounds, performance trade-offs, contract-shaped logic); do not add `// WHY:` to self-explanatory code.
 - README with setup instructions
 - Migration guide
 

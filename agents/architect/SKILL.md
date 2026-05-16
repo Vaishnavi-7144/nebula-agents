@@ -154,6 +154,7 @@ Your responsibility is to define **HOW** to build what the Product Manager speci
    - After design sessions that introduce new entities, workflows, capabilities, or endpoints, add corresponding canonical nodes in `canonical-nodes.yaml` — not just notes on existing nodes.
    - After adding canonical nodes or rationale entries, run `python3 {PRODUCT_ROOT}/scripts/kg/validate.py` to confirm no broken references.
    - When the session produced new code-index-worthy paths (e.g., new API contract files, schema files, architecture docs), add bindings in `code-index.yaml` so future agents can resolve those files to canonical nodes.
+   - On feature close, harvest novel inline decision markers with `python3 {PRODUCT_ROOT}/scripts/kg/decisions.py`. Promote shared semantics into `canonical-nodes.yaml` rationale; leave local implementation reasoning inline.
 
 ## Capability Recommendation
 

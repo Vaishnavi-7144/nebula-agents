@@ -59,6 +59,8 @@ Execute these review agents **in parallel**:
    - Check for over-engineering or under-engineering
    - Validate SOLUTION-PATTERNS.md compliance
    - Validate frontend UX rule-set compliance when UI code changed
+   - Treat a non-obvious change without `// WHY:` (or language equivalent) as a blocker
+   - If inline decision markers changed, require `python3 {PRODUCT_ROOT}/scripts/kg/validate.py --regenerate-decisions --check-decisions` evidence
 
 4. **Produce code review report:**
    ```markdown

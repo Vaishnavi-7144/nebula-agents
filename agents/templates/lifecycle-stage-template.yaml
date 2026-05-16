@@ -40,3 +40,9 @@ gates:
       - python3
       - "{PRODUCT_ROOT}/scripts/kg/validate.py"
       - --check-symbols
+  inline_decisions_check:
+    description: Validate inline decision markers resolve to files, nodes, symbols, and ADRs.
+    command:
+      - python3
+      - "{PRODUCT_ROOT}/scripts/kg/validate.py"
+      - --check-decisions

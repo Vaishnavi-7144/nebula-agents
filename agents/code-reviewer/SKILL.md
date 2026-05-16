@@ -262,6 +262,11 @@ Flag when you see:
 - Flag missing or dangling caller/callee references (existing symbols pointing at IDs that no longer resolve) — these signal partial regeneration.
 - Symbol-layer mismatches indicate the change skipped the routing-aid update; raw source still wins, but downstream agents lose the shortcut.
 
+### 12. Inline Decision Markers
+- Non-obvious change without `// WHY:` (or language equivalent such as `# WHY:` / `* @why`) is a blocker.
+- Do not require markers for self-explanatory code; comments must explain rationale, not restate mechanics.
+- If markers changed, verify `python3 {PRODUCT_ROOT}/scripts/kg/validate.py --regenerate-decisions --check-decisions` passes.
+
 ## Review Workflow
 
 ### Step 1: Gather Context

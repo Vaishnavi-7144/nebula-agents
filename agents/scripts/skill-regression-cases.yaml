@@ -74,3 +74,23 @@ content_assertions:
     skill: code-reviewer
     must_contain: "Knowledge-Graph & Symbol-Index Sync"
     rationale: Symbol-index sync dimension added during KG Phase 1
+  - id: backend_inline_why_marker
+    skill: backend-developer
+    must_contain: "Emit `// WHY:`"
+    rationale: Inline decision markers added during KG Phase 2
+  - id: frontend_inline_why_marker
+    skill: frontend-developer
+    must_contain: "* @why"
+    rationale: Inline decision markers added during KG Phase 2
+  - id: ai_engineer_inline_why_marker
+    skill: ai-engineer
+    must_contain: "# WHY:"
+    rationale: Inline decision markers added during KG Phase 2
+  - id: architect_inline_decision_harvest
+    skill: architect
+    must_contain: "harvest novel inline decision markers"
+    rationale: Inline decision marker harvest guidance added during KG Phase 2
+  - id: code_reviewer_inline_decision_gate
+    skill: code-reviewer
+    must_contain: "Non-obvious change without `// WHY:`"
+    rationale: Inline decision marker review gate added during KG Phase 2

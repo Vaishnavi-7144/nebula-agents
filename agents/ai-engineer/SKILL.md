@@ -194,6 +194,7 @@ node, so the edit stays narrow and avoids re-reading the full file.
 - MCP server implementation
 - Agent workflow definitions
 - Prompt templates
+- `# WHY:` markers for non-obvious choices (workarounds, performance trade-offs, contract-shaped logic); skip self-explanatory code
 
 **Configuration:**
 - `{PRODUCT_ROOT}/neuron/config/models.yaml` - Model configurations
