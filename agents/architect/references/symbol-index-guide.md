@@ -18,12 +18,36 @@ the symbol, get its callers/callees, edit narrowly."
 - Before editing a bound method body — call
   `python3 {PRODUCT_ROOT}/scripts/kg/lookup.py --symbol <name>` to get the
   symbol record plus its caller/callee neighbourhood.
+- When only one slice of that neighbourhood is needed, the narrow
+  projections are cheaper than `--symbol`:
+  - `lookup.py --callers-only <symbol-id>` — caller ids only, no siblings.
+  - `lookup.py --callees-only <symbol-id>` — callee ids only.
+  - `lookup.py --defines <name>` — every definition matching a bare name
+    across the whole index (use during design before introducing a new
+    surface; scope further with `--node <node-id>`).
+  - `lookup.py --implementers <interface-symbol-id>` — every concrete
+    type satisfying an interface member.
+  - `lookup.py --overrides <method-id>` — every override of a base-class
+    method (same scan as `--implementers`; different intent).
 - When triaging a regression — `blast.py --symbol <name>` or
   `blast.py symbol:<id>` walks one hop of call edges and reports the
   canonical nodes and files reached.
+- When assessing the impact of a feature branch — `diff-impact.py
+  <git-range> [--depth N]` maps the diff to symbols and walks callers
+  transitively to enumerate the canonical nodes affected.
 - When reviewing a diff that adds, renames, or removes a class, function,
   method, or property in a bound file — re-run `validate.py
   --regenerate-symbols --check-symbols` so the layer stays in sync.
+
+### Narrow projection vs. full neighbourhood
+
+`lookup.py --symbol` returns the symbol record plus full call neighbourhood,
+sibling symbols on the same canonical node, and decisions touching the
+symbol. Use it when the question is "what is around this symbol?". The
+narrow projections (`--callers-only`, `--callees-only`, `--defines`,
+`--implementers`, `--overrides`) skip the neighbourhood/sibling work and
+return only the requested slice — cheaper context for agents that already
+know what they're looking for.
 
 ---
 
@@ -85,8 +109,11 @@ symbols:
 | `signature` | string | First line of the declaration, attributes stripped. |
 | `visibility` | enum | `public \| internal \| protected \| private` (C#); `export \| local \| public` (TS); `public \| private` (Python). |
 | `language` | enum | `csharp \| typescript \| python` |
-| `callers` | string[] | Symbol ids that invoke this symbol. Resolved semantically for C# (cross-node visible); name-matched within the same canonical node for TS and Python. |
+| `callers` | string[] | Symbol ids that invoke this symbol. Resolved semantically for C# and TypeScript (cross-node visible); name-matched within the same canonical node for Python. |
 | `callees` | string[] | Symbol ids this symbol invokes. Same resolution model as `callers`. |
+| `end_line` | integer | 1-based line number of the declaration's closing brace (or last AST node). Used by `diff-impact.py` to map changed line ranges to symbols. |
+| `is_test` | bool | `true` when the symbol's file matches a `code-index.yaml` binding bucket ending in `.tests` (case-insensitive). Drives `validate.py --check-untested` and the `coverage-gaps` test-source exclusion. |
+| `implements` | string[] | Symbol ids of interface members or base-class methods this symbol satisfies. Empty array stripped from on-disk form. C# and TS emit; Python is `[]` until the semantic-engine swap. |
 
 Call-edge resolution is per-language:
 
@@ -98,15 +125,60 @@ Call-edge resolution is per-language:
   (endpoint → service, service → repository, controller → handler) resolve
   correctly. For every method that satisfies an interface member or
   overrides a base method, a synthetic edge is added from the interface
-  member to the impl so reaching `IFoo.Bar` walks into every `Foo.Bar`.
-- **TypeScript** and **Python** — the extractors emit bare invocation
-  names. The orchestrator matches names against other symbols on the
-  **same canonical node** as the caller. Cross-node calls are invisible to
-  the walk; over-linking within a node is acceptable.
+  member to the impl so reaching `IFoo.Bar` walks into every `Foo.Bar`,
+  and the impl persists the interface-member id on its `implements:` array.
+- **TypeScript** — the ts-morph extractor builds a single Project across
+  every bound file, resolves each `CallExpression` via
+  `getExpression().getSymbol()` to its declaring class/module, and emits
+  call edges as `{name, container}` parallel to C#. Class declarations
+  also emit `implements` and `extends` heritage so `--implementers` and
+  `--overrides` queries are cross-node visible on the experience tier.
+- **Python** — the stdlib-ast extractor emits bare invocation names. The
+  orchestrator matches names against other symbols on the **same canonical
+  node** as the caller. Cross-node calls are invisible to the walk;
+  over-linking within a node is acceptable. The semantic-engine swap
+  (Jedi or Pyright) is deferred until a product acquires enough Python
+  surface to measure resolution accuracy meaningfully.
 
-Over-linking and missed cross-node edges in TS/Python are both acceptable —
-the layer is a routing aid, not a static-analysis report. Raw source files
-remain authoritative per `solution-ontology.yaml.authority.precedence`.
+Over-linking and missed cross-node edges in Python (and any leftover gaps
+in TS) are both acceptable — the layer is a routing aid, not a
+static-analysis report. Raw source files remain authoritative per
+`solution-ontology.yaml.authority.precedence`.
+
+### Compilation scope vs. emission scope
+
+Each extractor takes a `--compilation-root` flag (one or more directory
+roots). The extractor walks each root for source files of the relevant
+language, builds a single semantic compilation across all of them, and
+emits `SymbolRecord` entries only for files in the bound-files list
+derived from `code-index.yaml`. Calls from compilation-root files that
+are *not* bound (tests outside their owning binding, helpers under
+`scripts/`, etc.) still influence semantic resolution but do not
+themselves produce symbols.
+
+Invocations originating in unbound compilation-root files that target a
+bound symbol are written to a side report:
+`planning-mds/knowledge-graph/unbound-but-referenced.yaml`. This is the
+substrate for `validate.py --check-coverage-gaps` and the
+`coverage-gaps.py` projection — it surfaces real coverage gaps without
+re-running grep.
+
+### `implements:` and the satisfies/overrides queries
+
+The on-disk record gains one field `implements: [<symbol-id>, ...]`
+listing the interface members (and base-class virtuals) the symbol
+satisfies. Querying:
+
+- `lookup.py --implementers <interface-symbol-id>` reverses the array:
+  scan every symbol, return those whose `implements` contains the
+  requested id.
+- `lookup.py --overrides <method-id>` runs the same scan against a
+  base-class method id.
+
+C# emits `implements` for both interface dispatch and base-class
+override edges. TS emits via heritage clauses (`implements`, `extends`).
+Python records carry `implements: []` until the semantic-engine swap
+lands.
 
 ---
 

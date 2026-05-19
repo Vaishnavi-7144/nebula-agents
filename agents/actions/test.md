@@ -52,6 +52,10 @@ Test Complete
    - `feature:{slug}` — all test types for a specific feature
    - `all` — comprehensive test suite (default)
 
+4. **Surface untested public methods/functions on the in-scope canonical nodes:**
+   - Run `python3 {PRODUCT_ROOT}/scripts/kg/validate.py --check-untested`. Each finding names a bound symbol with no caller in a `*.tests` bucket.
+   - For each finding intersecting the in-scope feature: add it to the Story-to-Test Mapping as a candidate test case, or record an explicit exemption (`--untested-exempt-node <node-id>`) with rationale in the plan.
+
 4. **Produce test plan:**
    ```markdown
    # Test Plan

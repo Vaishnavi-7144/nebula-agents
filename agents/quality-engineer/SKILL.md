@@ -135,6 +135,7 @@ Your responsibility is to implement the **quality assurance layer** - tests that
 - Generate coverage reports
 - Identify untested code paths
 - Treat coverage artifacts as required evidence whenever coverage is claimed or enforced
+- Per feature close, run `python3 {PRODUCT_ROOT}/scripts/kg/validate.py --check-untested` and triage every public method/function on the touched canonical nodes that surfaces. For each result: write a test, record an explicit exemption via `--untested-exempt-node`, or convert it to a `private`/`internal` member if it doesn't belong to the public surface. Findings persist as `warn` by default; promote to errors with `--untested-as-errors` once the touched nodes are clean.
 
 ### 5. Security Testing
 - Vulnerability scanning (Trivy - dependencies + containers)
