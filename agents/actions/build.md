@@ -55,6 +55,18 @@ The package contents match those produced by `agents/actions/feature.md` (see it
 
 If step 1 fails, do not proceed to step 2; surface the failure with the operator runbook reference (`feature-evidence-package-standardization-plan-v2.md` §28 Phase 5 "Partial-closeout recovery"). Build-action runs that do not archive a delivered feature use the §8 base run evidence shape only.
 
+### Per-Gate Evidence Validation (§17 / §24)
+
+When this action drives feature closeout, run `validate-feature-evidence.py` at each gate. Use the in-progress `--run-id` form until `latest-run.json` is published:
+
+| Gate | Command |
+|------|---------|
+| G0–G4.5 | `python3 agents/product-manager/scripts/validate-feature-evidence.py --product-root {PRODUCT_ROOT} --feature F#### --run-id {RUN_ID} --stage <G0\|G1\|G2\|G3\|G4.5>` |
+| G4.6 candidate | `python3 agents/product-manager/scripts/validate-feature-evidence.py --product-root {PRODUCT_ROOT} --feature F#### --run-id {RUN_ID} --stage G4.6` (before tracker sync; before `pm-closeout.md` is finalized) |
+| Closeout (G4.7) | After §17 step 4 supersession-and-publish completes: `python3 agents/product-manager/scripts/validate-feature-evidence.py --product-root {PRODUCT_ROOT} --feature F#### --stage closeout` |
+
+Stage-validation failures must be resolved before advancing the gate.
+
 ---
 
 ## Forbidden

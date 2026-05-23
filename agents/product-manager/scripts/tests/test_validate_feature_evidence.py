@@ -93,7 +93,7 @@ BASE_FILES = {
     "artifact-trace.md": "# Artifact Trace\n\n## Artifacts Read\n\n## Artifacts Created Or Updated\n\n## Generated Evidence\n\n## External Or Global Evidence References\n\n## Omissions And Waivers\n",
     "gate-decisions.md": "# Gate Decisions\n\n| Gate | Decision | Decider | Timestamp | Rationale | Blocking | Follow-up |\n|---|---|---|---|---|---|---|\n| G0 | PASS | Architect | 2026-05-19 | ok | No | - |\n",
     "commands.log": "",
-    "lifecycle-gates.log": "# Lifecycle Gate Run\n\n## Command\n\n## Stage\n\n## Exit Code\n\n## Result\n\n## Output References\n\n## Skipped Gates\n",
+    "lifecycle-gates.log": "# Lifecycle Gate Run\n\n## Command\n\nvalidate-trackers.py\n\n## Stage\n\nG4.7\n\n## Exit Code\n\n0\n\n## Result\n\ntracker-sync PASS\n\n## Output References\n\n## Skipped Gates\n",
     "g0-assembly-plan-validation.md": "# G0\n\nResult: PASS\n",
 }
 
@@ -618,3 +618,135 @@ def test_phase_one_fixture_map_closure() -> None:
             assert entry["negative_fixtures"], rule_id
             for fixture in entry["positive_fixtures"] + entry["negative_fixtures"]:
                 assert (FIXTURE_ROOT / fixture).exists() or fixture in indexed_fixtures, fixture
+
+
+# Authoritative §23 fixture inventory. The closure test below asserts that
+# every name in this list is either a directory on disk under FIXTURE_ROOT or
+# present in fixture-index.json. Update this list when §23 changes.
+SECTION_23_REQUIRED_FIXTURES: list[str] = [
+    # §23 required positive fixtures
+    "complete_runtime_feature_passes",
+    "complete_non_runtime_doc_feature_passes",
+    "complete_security_sensitive_feature_passes",
+    "complete_deployment_changed_feature_passes",
+    "active_done_post_contract_with_evidence_passes",
+    "post_contract_archived_with_evidence_passes",
+    "reopened_historical_with_evidence_passes",
+    "pre_contract_archived_skipped_passes",
+    "active_done_pre_contract_parseable_skip_warns",
+    "active_in_progress_ignored_passes",
+    "retired_abandoned_skipped_passes",
+    "retired_superseded_skipped_passes",
+    "with_recommendations_accepted_passes",
+    "stage_g0_allows_later_reports_pending_passes",
+    "stage_g4_6_candidate_with_run_id_before_latest_run_passes",
+    "stage_g4_6_uses_latest_run_when_run_id_omitted_passes",
+    "stage_g4_6_candidate_null_closeout_path_passes",
+    "stage_closeout_after_tracker_results_passes",
+    "evidence_only_rerun_with_rerun_of_passes",
+    "prior_run_marked_superseded_on_new_approval_passes",
+    "validator_defect_waiver_with_followup_passes",
+    "validator_defect_waived_warns",
+    "commands_log_absolute_cwd_justified_passes",
+    "commands_log_secret_patterns_redacted_passes",
+    "pm_acceptance_line_format_parser_passes",
+    "path_class_union_match_passes",
+    "path_class_case_sensitive_no_match_passes",
+    "retired_feature_explicit_target_info",
+    "pre_contract_archived_explicit_target_info",
+
+    # §23 required negative fixtures
+    "missing_manifest_fails", "missing_latest_run_fails", "manifest_bad_run_id_fails",
+    "manifest_feature_id_mismatch_fails", "manifest_required_roles_mismatch_fails",
+    "manifest_required_artifact_omitted_fails", "manifest_unparseable_fails",
+    "manifest_unknown_waiver_key_without_pm_acceptance_fails",
+    "manifest_changed_path_traversal_fails", "manifest_file_path_absolute_fails",
+    "manifest_file_path_traversal_fails", "manifest_scm_diff_path_malformed_fails",
+    "stage_g4_6_run_id_mismatch_with_latest_run_fails", "cli_json_flags_conflict_fails",
+    "cli_run_id_malformed_fails", "cli_product_root_invalid_fails",
+    "feature_not_in_registry_fails", "registry_missing_fails",
+    "registry_required_section_missing_fails", "secret_patterns_invalid_secondary_class_fails",
+    "run_folder_not_found_fails", "commands_log_empty_at_approved_fails",
+    "gate_decisions_missing_stage_required_row_fails",
+    "post_contract_archived_missing_evidence_fails", "archived_missing_date_fails",
+    "active_done_post_contract_missing_evidence_fails",
+    "active_done_pre_contract_malformed_date_requires_evidence_fails",
+    "runtime_true_missing_preflight_fails", "deployment_changed_without_devops_fails",
+    "security_true_without_security_role_fails", "scope_boolean_false_with_changed_paths_fails",
+    "frontend_global_substituted_for_feature_report_fails", "missing_g0_fails", "missing_g2_fails",
+    "missing_deployability_fails", "missing_test_plan_fails", "missing_test_execution_fails",
+    "missing_coverage_report_fails", "coverage_waiver_missing_pm_acceptance_fails",
+    "missing_code_review_fails", "security_required_missing_report_fails",
+    "signoff_ledger_disagrees_fails", "status_stale_pass_followed_by_fail_fails",
+    "status_evidence_outside_package_fails", "recommendation_no_pm_acceptance_fails",
+    "commands_log_malformed_json_fails", "commands_log_secret_pattern_fails",
+    "secret_patterns_unloadable_fails", "secret_patterns_conflict_fails",
+    "latest_run_wrong_manifest_fails", "stage_without_run_id_before_g4_6_fails",
+    "stage_g4_6_without_run_id_or_latest_run_fails", "stage_no_sorted_run_inference_fails",
+    "stage_g4_7_requires_tracker_results_fails", "pm_role_required_missing_report_fails",
+    "gate_decisions_missing_g4_6_fails", "gate_decisions_missing_g4_7_fails",
+    "manifest_rerun_of_unknown_run_fails", "manifest_empty_changed_paths_without_rerun_of_fails",
+    "stage_g4_7_run_id_mismatch_fails", "manifest_final_approved_with_non_terminal_state_fails",
+    "two_approved_runs_without_supersession_fails", "validator_defect_waiver_missing_followup_fails",
+
+    # §23 additional inventory
+    "missing_readme_heading_fails", "action_context_wrong_feature_fails", "artifact_trace_missing_global_ref_fails",
+    "gate_decisions_missing_g4_5_fails", "lifecycle_gates_missing_exit_code_fails",
+    "manifest_bad_schema_version_fails", "manifest_bad_status_fails", "manifest_bad_recorded_on_fails",
+    "manifest_bad_effective_date_fails", "manifest_bad_start_path_fails", "manifest_closeout_path_missing_fails",
+    "manifest_slug_mismatch_fails", "manifest_missing_changed_paths_fails", "manifest_changed_path_absolute_fails",
+    "manifest_scm_diff_missing_fails", "changed_paths_missing_diff_entry_fails",
+    "manifest_missing_runtime_boolean_fails", "manifest_missing_deploy_boolean_fails",
+    "manifest_missing_frontend_boolean_fails", "manifest_missing_security_boolean_fails",
+    "manifest_missing_gate_results_fails", "manifest_file_path_missing_fails",
+    "manifest_role_results_mismatch_fails", "manifest_waiver_without_report_fails",
+    "manifest_global_ref_missing_fails", "manifest_retired_state_fails",
+    "latest_run_bad_status_fails", "latest_run_absolute_path_fails",
+    "commands_log_missing_exit_code_fails", "commands_log_artifact_missing_fails",
+    "command_artifact_missing_fails",
+    "missing_feature_action_execution_fails", "missing_pm_closeout_fails",
+    "coverage_claim_without_artifact_fails", "test_results_reference_missing_fails",
+    "security_scan_reference_missing_fails", "screenshot_reference_missing_fails",
+    "required_artifact_omitted_fails", "runtime_preflight_omitted_when_runtime_true_fails",
+    "security_report_omitted_when_required_fails", "omission_filesystem_mismatch_fails",
+    "recommendation_ambiguous_fails", "recommendation_missing_severity_fails",
+    "recommendation_missing_owner_fails", "blocking_language_with_pass_fails",
+    "recommendation_acceptance_mismatch_fails", "coverage_waiver_mismatch_fails",
+    "deferred_blocker_passes_fails",
+    "status_missing_baseline_role_fails", "status_missing_forced_role_fails",
+    "status_evidence_missing_file_fails", "status_recommendation_without_acceptance_fails",
+    "status_story_missing_role_fails", "status_bad_date_fails", "status_missing_reviewer_fails",
+    "signoff_ledger_stale_fails",
+    "reopened_historical_missing_evidence_fails",
+    "frontend_true_without_feature_test_notes_fails", "frontend_global_ref_missing_fails",
+    "frontend_quality_bad_latest_run_fails", "frontend_ux_ref_missing_fails",
+    "feature_identity_mismatch_fails", "run_identity_mismatch_fails", "closeout_path_mismatch_fails",
+    "required_roles_mismatch_fails", "role_verdict_mismatch_fails", "gate_verdict_mismatch_fails",
+    "changed_paths_mismatch_fails",
+    "status_story_value_bad_format_fails", "status_story_value_unknown_story_fails",
+    "effective_date_override_earlier_than_default_fails", "effective_date_overridden_warns",
+    "commands_log_absolute_cwd_warns",
+    "path_class_extension_conflict_fails",
+]
+
+
+def test_section_23_inventory_closure() -> None:
+    """§23 closure pivoted on the inventory itself. Every fixture listed in
+    SECTION_23_REQUIRED_FIXTURES (mirroring §23 positive + negative + additional
+    inventory) must exist as a directory under FIXTURE_ROOT *or* be present in
+    fixture-index.json. This catches drift where a §23 fixture name has neither
+    a placeholder dir nor a registered virtual name."""
+    indexed = set(json.loads((FIXTURE_ROOT / "fixture-index.json").read_text(encoding="utf-8")))
+    missing = [
+        name for name in SECTION_23_REQUIRED_FIXTURES
+        if not (FIXTURE_ROOT / name).exists() and name not in indexed
+    ]
+    assert not missing, f"§23 fixtures missing from disk AND fixture-index.json: {sorted(missing)!r}"
+
+
+def test_section_23_inventory_has_no_typos() -> None:
+    """Sanity: every §23 fixture name follows the `_passes`/`_fails`/`_warns`/`_info`
+    suffix rule (§22 rule identification). Catches typos in the inventory."""
+    allowed_suffixes = ("_passes", "_fails", "_warns", "_info")
+    bad = [name for name in SECTION_23_REQUIRED_FIXTURES if not name.endswith(allowed_suffixes)]
+    assert not bad, f"Fixture names with non-canonical suffix: {bad!r}"

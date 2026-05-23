@@ -69,7 +69,9 @@ Stop immediately if runtime preflight cannot be restored, if a critical code or 
 
 Close the run by executing these in order:
 - `Applicable backend/frontend/test commands for changed surfaces (inside runtime containers; evidence paths recorded)`
+- `python3 agents/product-manager/scripts/validate-feature-evidence.py --product-root {PRODUCT_ROOT} --feature F#### --run-id {RUN_ID} --stage G4.6`
 - `python3 agents/product-manager/scripts/validate-trackers.py`
+- `python3 agents/product-manager/scripts/validate-feature-evidence.py --product-root {PRODUCT_ROOT} --feature F#### --stage closeout`
 - `python3 agents/product-manager/scripts/generate-story-index.py {PRODUCT_ROOT}/planning-mds/features/   (if stories changed)`
 - `IF code in bound files changed: python3 {PRODUCT_ROOT}/scripts/kg/validate.py --regenerate-symbols`
 - `IF KG changed: python3 {PRODUCT_ROOT}/scripts/kg/validate.py --write-coverage-report`

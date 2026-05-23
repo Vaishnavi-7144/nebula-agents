@@ -197,13 +197,22 @@ def test_empty_changed_paths_without_rerun_of_fires(tmp_path: Path) -> None:
 def test_evidence_only_rerun_with_rerun_of_passes(tmp_path: Path) -> None:
     product = tmp_path / "product"
     write_registry(product, archived="| F0001 | New Feature | 2026-05-19 |  | `archive/F0001-new/` |")
+    # Seed a prior approved run so manifest_rerun_of_unknown_run_fails does not fire.
+    prior_run_id = "2026-05-15-aaaa1111"
+    write_manifest_run(
+        product,
+        "F0001-new",
+        "F0001",
+        run_id=prior_run_id,
+        status="approved",
+    )
     write_manifest_run(
         product,
         "F0001-new",
         "F0001",
         manifest_updates={
             "changed_paths": [],
-            "rerun_of": "2026-05-15-aaaa1111",
+            "rerun_of": prior_run_id,
             "scm": {"base_ref": "main", "head_ref": "feature/F0001", "diff_artifact": ""},
         },
     )

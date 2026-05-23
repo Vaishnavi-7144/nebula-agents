@@ -710,5 +710,185 @@
     "status": "active",
     "positive_fixtures": ["validator_defect_waived_warns"],
     "negative_fixtures": ["validator_defect_waiver_missing_followup_fails"]
+  },
+  "signoff_ledger_disagrees_fails": {
+    "owner_phase": "Phase 2b",
+    "status": "active",
+    "positive_fixtures": ["complete_runtime_feature_passes"],
+    "negative_fixtures": ["signoff_ledger_disagrees_fails"]
+  },
+  "deployment_changed_without_devops_fails": {
+    "owner_phase": "Phase 2b",
+    "status": "active",
+    "positive_fixtures": ["complete_deployment_changed_feature_passes"],
+    "negative_fixtures": ["deployment_changed_without_devops_fails"]
+  },
+  "security_true_without_security_role_fails": {
+    "owner_phase": "Phase 2b",
+    "status": "active",
+    "positive_fixtures": ["complete_security_sensitive_feature_passes"],
+    "negative_fixtures": ["security_true_without_security_role_fails"]
+  },
+  "changed_paths_mismatch_fails": {
+    "owner_phase": "Phase 2b",
+    "status": "active",
+    "positive_fixtures": ["complete_runtime_feature_passes"],
+    "negative_fixtures": ["changed_paths_mismatch_fails"]
+  },
+  "coverage_claim_without_artifact_fails": {
+    "owner_phase": "Phase 2b",
+    "status": "active",
+    "positive_fixtures": ["complete_runtime_feature_passes"],
+    "negative_fixtures": ["coverage_claim_without_artifact_fails"]
+  },
+  "deferred_blocker_passes_fails": {
+    "owner_phase": "Phase 2b",
+    "status": "active",
+    "positive_fixtures": ["with_recommendations_accepted_passes"],
+    "negative_fixtures": ["deferred_blocker_passes_fails"]
+  },
+  "frontend_true_without_feature_test_notes_fails": {
+    "owner_phase": "Phase 2b",
+    "status": "active",
+    "positive_fixtures": ["complete_runtime_feature_passes"],
+    "negative_fixtures": ["frontend_true_without_feature_test_notes_fails"]
+  },
+  "frontend_global_ref_missing_fails": {
+    "owner_phase": "Phase 2b",
+    "status": "active",
+    "positive_fixtures": ["complete_runtime_feature_passes"],
+    "negative_fixtures": ["frontend_global_ref_missing_fails"]
+  },
+  "frontend_global_substituted_for_feature_report_fails": {
+    "owner_phase": "Phase 2b",
+    "status": "active",
+    "positive_fixtures": ["complete_runtime_feature_passes"],
+    "negative_fixtures": ["frontend_global_substituted_for_feature_report_fails"]
+  },
+  "frontend_quality_bad_latest_run_fails": {
+    "owner_phase": "Phase 2b",
+    "status": "active",
+    "positive_fixtures": ["complete_runtime_feature_passes"],
+    "negative_fixtures": ["frontend_quality_bad_latest_run_fails"]
+  },
+  "frontend_ux_ref_missing_fails": {
+    "owner_phase": "Phase 2b",
+    "status": "active",
+    "positive_fixtures": ["complete_runtime_feature_passes"],
+    "negative_fixtures": ["frontend_ux_ref_missing_fails"]
+  },
+  "latest_run_absolute_path_fails": {
+    "owner_phase": "Phase 2b",
+    "status": "active",
+    "positive_fixtures": ["stage_g4_6_uses_latest_run_when_run_id_omitted_passes"],
+    "negative_fixtures": ["latest_run_absolute_path_fails"]
+  },
+  "latest_run_bad_status_fails": {
+    "owner_phase": "Phase 2b",
+    "status": "active",
+    "positive_fixtures": ["stage_g4_6_uses_latest_run_when_run_id_omitted_passes"],
+    "negative_fixtures": ["latest_run_bad_status_fails"]
+  },
+  "manifest_rerun_of_unknown_run_fails": {
+    "owner_phase": "Phase 2b",
+    "status": "active",
+    "positive_fixtures": ["evidence_only_rerun_with_rerun_of_passes"],
+    "negative_fixtures": ["manifest_rerun_of_unknown_run_fails"]
+  },
+  "pm_role_required_missing_report_fails": {
+    "owner_phase": "Phase 2b",
+    "status": "active",
+    "positive_fixtures": ["complete_runtime_feature_passes"],
+    "negative_fixtures": ["pm_role_required_missing_report_fails"]
+  },
+  "required_artifact_omitted_fails": {
+    "owner_phase": "Phase 2b",
+    "status": "active",
+    "positive_fixtures": ["complete_runtime_feature_passes"],
+    "negative_fixtures": ["required_artifact_omitted_fails"]
+  },
+  "required_roles_mismatch_fails": {
+    "owner_phase": "Phase 2b",
+    "status": "active",
+    "positive_fixtures": ["complete_runtime_feature_passes"],
+    "negative_fixtures": ["required_roles_mismatch_fails"]
+  },
+  "screenshot_reference_missing_fails": {
+    "owner_phase": "Phase 2b",
+    "status": "active",
+    "positive_fixtures": ["complete_runtime_feature_passes"],
+    "negative_fixtures": ["screenshot_reference_missing_fails"]
+  },
+  "security_scan_reference_missing_fails": {
+    "owner_phase": "Phase 2b",
+    "status": "active",
+    "positive_fixtures": ["complete_security_sensitive_feature_passes"],
+    "negative_fixtures": ["security_scan_reference_missing_fails"]
+  },
+  "stage_g4_7_requires_tracker_results_fails": {
+    "owner_phase": "Phase 2b",
+    "status": "active",
+    "positive_fixtures": ["stage_closeout_after_tracker_results_passes"],
+    "negative_fixtures": ["stage_g4_7_requires_tracker_results_fails"]
+  },
+  "test_results_reference_missing_fails": {
+    "owner_phase": "Phase 2b",
+    "status": "active",
+    "positive_fixtures": ["complete_runtime_feature_passes"],
+    "negative_fixtures": ["test_results_reference_missing_fails"]
+  },
+  "reopened_historical_missing_evidence_fails": {
+    "owner_phase": "Phase 2b",
+    "status": "active",
+    "positive_fixtures": ["reopened_historical_with_evidence_passes"],
+    "negative_fixtures": ["reopened_historical_missing_evidence_fails"]
+  },
+  "active_done_pre_contract_malformed_date_requires_evidence_fails": {
+    "owner_phase": "Phase 2b",
+    "status": "active",
+    "positive_fixtures": ["active_done_post_contract_with_evidence_passes"],
+    "negative_fixtures": ["active_done_pre_contract_malformed_date_requires_evidence_fails"]
+  },
+  "post_contract_archived_with_evidence_passes": {
+    "owner_phase": "Phase 2b",
+    "status": "active",
+    "positive_fixtures": ["post_contract_archived_with_evidence_passes"],
+    "negative_fixtures": ["post_contract_archived_missing_evidence_fails"]
+  },
+  "retired_abandoned_skipped_passes": {
+    "owner_phase": "Phase 2b",
+    "status": "active",
+    "positive_fixtures": ["retired_abandoned_skipped_passes"],
+    "negative_fixtures": ["retired_feature_explicit_target_info"]
+  },
+  "retired_superseded_skipped_passes": {
+    "owner_phase": "Phase 2b",
+    "status": "active",
+    "positive_fixtures": ["retired_superseded_skipped_passes"],
+    "negative_fixtures": ["retired_feature_explicit_target_info"]
+  },
+  "path_class_union_match_passes": {
+    "owner_phase": "Phase 2b",
+    "status": "active",
+    "positive_fixtures": ["path_class_union_match_passes"],
+    "negative_fixtures": ["scope_boolean_false_with_changed_paths_fails"]
+  },
+  "path_class_case_sensitive_no_match_passes": {
+    "owner_phase": "Phase 2b",
+    "status": "active",
+    "positive_fixtures": ["path_class_case_sensitive_no_match_passes"],
+    "negative_fixtures": ["scope_boolean_false_with_changed_paths_fails"]
+  },
+  "stage_g4_6_candidate_null_closeout_path_passes": {
+    "owner_phase": "Phase 2b",
+    "status": "active",
+    "positive_fixtures": ["stage_g4_6_candidate_with_run_id_before_latest_run_passes"],
+    "negative_fixtures": ["manifest_closeout_path_missing_fails"]
+  },
+  "stage_closeout_after_tracker_results_passes": {
+    "owner_phase": "Phase 2b",
+    "status": "active",
+    "positive_fixtures": ["complete_runtime_feature_passes"],
+    "negative_fixtures": ["stage_g4_7_requires_tracker_results_fails"]
   }
 }

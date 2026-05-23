@@ -18,13 +18,16 @@ Use this checklist before tagging an initial public preview of the framework.
 ## 3) Manual Orchestration Reproducibility
 
 - [ ] `agents/docs/MANUAL-ORCHESTRATION-RUNBOOK.md` exists and is linked from `README.md`.
-- [ ] At least one representative run evidence package exists under `{PRODUCT_ROOT}/planning-mds/operations/evidence/`.
-- [ ] Evidence package contains all required files:
+- [ ] At least one representative manual/orchestrated run evidence package exists under `{PRODUCT_ROOT}/planning-mds/operations/evidence/{run-id}/` (the §8 base run contract for non-feature/manual runs).
+- [ ] Base run evidence package contains all required files:
+  - [ ] `README.md`
   - [ ] `action-context.md`
   - [ ] `artifact-trace.md`
   - [ ] `gate-decisions.md`
   - [ ] `commands.log`
   - [ ] `lifecycle-gates.log`
+
+> **Base run evidence is for representative manual runs only.** It does **not** substitute for the per-feature role reports required by the §10 / §17 feature completion profile (`g0-assembly-plan-validation.md`, `test-plan.md`, `test-execution-report.md`, `coverage-report.md`, `deployability-check.md`, `code-review-report.md`, `security-review-report.md` when scoped, `signoff-ledger.md`, `pm-closeout.md`). Completed terminal feature runs always write into `{PRODUCT_ROOT}/planning-mds/operations/evidence/F####-{slug}/{run-id}/` and validate against the §10 matrix — checking the base files alone is not sufficient.
 
 ## 4) Lifecycle And CI Clarity
 

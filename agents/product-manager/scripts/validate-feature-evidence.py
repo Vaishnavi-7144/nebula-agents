@@ -887,18 +887,66 @@ def classify_retired(row: RegistryRow, result: Result) -> None:
 
 
 def extract_closeout_review_date(feature_path: Path) -> date | None:
+    parsed, _ = extract_closeout_review_date_with_shape(feature_path)
+    return parsed
+
+
+def extract_closeout_review_date_with_shape(feature_path: Path) -> tuple[date | None, str]:
+    """Returns (parsed_date, shape) where shape is one of 'parseable',
+    'malformed', 'absent'. 'malformed' means the row exists with a non-empty
+    value that did not parse."""
     status_path = feature_path / "STATUS.md"
     if not status_path.exists():
-        return None
+        return None, "absent"
     content = safe_read(status_path)
     if content is None:
-        return None
+        return None, "absent"
     section = extract_section(content, "Closeout Summary")
     for row in parse_table(section):
         field_name = row.get("Field", "").strip().casefold()
         if field_name == "closeout review date":
-            return parse_iso_date(row.get("Value", ""))
-    return None
+            value = (row.get("Value", "") or "").strip()
+            parsed = parse_iso_date(value) if value else None
+            if parsed is not None:
+                return parsed, "parseable"
+            if value:
+                return None, "malformed"
+            return None, "absent"
+    return None, "absent"
+
+
+def emit_reopened_reentry_rule_if_missing(
+    row: RegistryRow, product_root: Path, result: Result,
+) -> None:
+    """When an archived feature carries a post-contract `Evidence Reentry Date`
+    and no canonical evidence package exists, fire
+    `reopened_historical_missing_evidence_fails` so the cause is clear in
+    operator output (it complements `post_contract_archived_missing_evidence_fails`).
+    """
+    evidence_root = evidence_root_for(product_root, row)
+    if not evidence_root.exists() or not (evidence_root / "latest-run.json").exists():
+        result.add_error(
+            "reopened_historical_missing_evidence_fails",
+            "Archived feature has Evidence Reentry Date on/after the effective date but no canonical evidence",
+            feature=row.feature_id, path=str(evidence_root),
+        )
+
+
+def emit_malformed_closeout_date_rule_if_missing(
+    row: RegistryRow, product_root: Path, result: Result,
+) -> None:
+    """When an active Done feature's STATUS.md has a malformed closeout date,
+    the feature stays governed; fire
+    `active_done_pre_contract_malformed_date_requires_evidence_fails` only if
+    canonical evidence is also missing, so operators see both the cause and
+    the missing package together."""
+    evidence_root = evidence_root_for(product_root, row)
+    if not evidence_root.exists() or not (evidence_root / "latest-run.json").exists():
+        result.add_error(
+            "active_done_pre_contract_malformed_date_requires_evidence_fails",
+            "Active Done feature has a malformed Closeout review date and no canonical evidence; date cannot qualify for the pre-contract skip",
+            feature=row.feature_id, path=str(evidence_root),
+        )
 
 
 def governed_rows(rows: dict[str, RegistryRow], product_root: Path, result: Result, effective_date: date) -> list[RegistryRow]:
@@ -916,13 +964,15 @@ def governed_rows(rows: dict[str, RegistryRow], product_root: Path, result: Resu
             if row_archived_date < effective_date and (reentry is None or reentry < effective_date):
                 result.features_skipped_pre_contract_archived += 1
                 continue
+            if row_archived_date < effective_date and reentry is not None and reentry >= effective_date:
+                emit_reopened_reentry_rule_if_missing(row, product_root, result)
             governed.append(row)
             continue
         if row.section == "Active Features":
             if not is_terminal_active(row):
                 continue
-            closeout_date = extract_closeout_review_date(feature_path_for(product_root, row))
-            if closeout_date is not None and closeout_date < effective_date:
+            closeout_date, shape = extract_closeout_review_date_with_shape(feature_path_for(product_root, row))
+            if shape == "parseable" and closeout_date is not None and closeout_date < effective_date:
                 result.features_skipped_active_done_pre_contract += 1
                 result.add_warning(
                     "active_done_pre_contract_parseable_skip_warns",
@@ -930,6 +980,8 @@ def governed_rows(rows: dict[str, RegistryRow], product_root: Path, result: Resu
                     feature=row.feature_id,
                 )
                 continue
+            if shape == "malformed":
+                emit_malformed_closeout_date_rule_if_missing(row, product_root, result)
             governed.append(row)
     return governed
 
@@ -2007,6 +2059,12 @@ def validate_role_and_gate_results(
                 f"Manifest required_roles is missing forced roles: {sorted(missing_in_declared)!r}",
                 **common,
             )
+            # §21 short-form rule that names the same condition cross-artifact.
+            result.add_error(
+                "required_roles_mismatch_fails",
+                f"Manifest required_roles disagrees with effective forced-role set: missing {sorted(missing_in_declared)!r}",
+                **common,
+            )
 
     # files dict — every value must resolve
     files = manifest.get("files")
@@ -2042,6 +2100,14 @@ def validate_role_and_gate_results(
             if artifact_name in required_artifacts:
                 result.add_error(
                     "manifest_required_artifact_omitted_fails",
+                    f"Required artifact {artifact_name!r} cannot appear in omissions[]",
+                    **common,
+                )
+                # §18 short-form rule. Both names cite the same condition; emit
+                # both so the §23 inventory rule_id is also discoverable in
+                # downstream tooling.
+                result.add_error(
+                    "required_artifact_omitted_fails",
                     f"Required artifact {artifact_name!r} cannot appear in omissions[]",
                     **common,
                 )
@@ -2363,6 +2429,11 @@ def validate_signoff_ledger_consistency(
                 f"signoff-ledger.md does not reference current STATUS row ({story}, {role})",
                 **common,
             )
+            result.add_error(
+                "signoff_ledger_disagrees_fails",
+                f"signoff-ledger.md disagrees with STATUS.md current row ({story}, {role})",
+                **common,
+            )
 
 
 def validate_cross_artifact_coverage_waiver(
@@ -2550,6 +2621,258 @@ def validate_command_artifact_filesystem(
                 )
 
 
+def validate_phase2b_additional_rules(
+    row: RegistryRow,
+    manifest: dict[str, Any],
+    manifest_path: Path,
+    run_folder: Path,
+    stage: str,
+    result: Result,
+) -> None:
+    """§23 closure additions completed in Phase 2b. Each block emits a distinct
+    rule_id. Tests under tests/test_validate_feature_evidence_phase2b.py drive
+    each scenario; the rules are grouped here for locality."""
+    feature_id = row.feature_id
+    run_id = manifest.get("run_id") if isinstance(manifest.get("run_id"), str) else None
+    common = {"feature": feature_id, "run_id": run_id, "path": str(manifest_path)}
+
+    declared = manifest.get("required_roles") or []
+    declared_set = {str(item) for item in declared if isinstance(item, str)}
+    role_results = manifest.get("role_results") or {}
+    role_results_required: set[str] = set()
+    if isinstance(role_results, dict):
+        role_results_required = {
+            name for name, entry in role_results.items()
+            if isinstance(entry, dict) and entry.get("required") is True
+        }
+
+    # required_roles_mismatch_fails (§21 cross-artifact form). manifest.required_roles[]
+    # must equal the union of role_results required + STATUS.md effective set.
+    extras_in_role_results = role_results_required - declared_set
+    if extras_in_role_results:
+        result.add_error(
+            "required_roles_mismatch_fails",
+            f"role_results lists roles required that required_roles[] omits: {sorted(extras_in_role_results)!r}",
+            **common,
+        )
+
+    # deployment_changed_without_devops_fails (§7 forced role).
+    if manifest.get("deployment_config_changed") is True and "DevOps" not in declared_set:
+        result.add_error(
+            "deployment_changed_without_devops_fails",
+            "deployment_config_changed=true but DevOps is not in required_roles[]",
+            **common,
+        )
+
+    # security_true_without_security_role_fails (§7 forced role).
+    if manifest.get("security_sensitive_scope") is True and "Security Reviewer" not in declared_set:
+        result.add_error(
+            "security_true_without_security_role_fails",
+            "security_sensitive_scope=true but Security Reviewer is not in required_roles[]",
+            **common,
+        )
+
+    # pm_role_required_missing_report_fails (§11 PM-as-planning-role).
+    pm_entry = role_results.get("Product Manager") if isinstance(role_results, dict) else None
+    if isinstance(pm_entry, dict) and pm_entry.get("required") is True:
+        verdict_artifact = pm_entry.get("verdict_artifact")
+        if not isinstance(verdict_artifact, str) or not verdict_artifact or not (run_folder / verdict_artifact).exists():
+            result.add_error(
+                "pm_role_required_missing_report_fails",
+                "Product Manager is required in role_results but its verdict_artifact is missing",
+                **common,
+            )
+
+    # latest-run.json schema rules (§12). validate_latest_run already enforces
+    # wrong-manifest / mismatched-run; these add path-shape and status-enum checks.
+    latest_path = manifest_path.parent.parent / "latest-run.json"
+    if latest_path.exists():
+        loaded, _ = load_json_file(latest_path)
+        if isinstance(loaded, dict):
+            for field in ("run_path", "manifest_path"):
+                value = loaded.get(field)
+                if isinstance(value, str) and value:
+                    absolute, _ = _is_repo_relative(value)
+                    if absolute:
+                        result.add_error(
+                            "latest_run_absolute_path_fails",
+                            f"latest-run.json {field}={value!r} is absolute; must be repo-relative",
+                            feature=feature_id, run_id=run_id, path=str(latest_path),
+                        )
+            status_value = loaded.get("status")
+            if status_value is not None and status_value != "approved":
+                result.add_error(
+                    "latest_run_bad_status_fails",
+                    f"latest-run.json status={status_value!r}; only 'approved' satisfies completed terminal validation",
+                    feature=feature_id, run_id=run_id, path=str(latest_path),
+                )
+
+    # manifest_rerun_of_unknown_run_fails (§11 rerun_of contract).
+    rerun_of = manifest.get("rerun_of")
+    if isinstance(rerun_of, str) and rerun_of:
+        prior_folder = manifest_path.parent.parent / rerun_of
+        prior_manifest = prior_folder / "evidence-manifest.json"
+        if not prior_manifest.exists():
+            result.add_error(
+                "manifest_rerun_of_unknown_run_fails",
+                f"rerun_of={rerun_of!r} references a run folder with no manifest",
+                **common,
+            )
+        else:
+            prior_doc, _err = load_json_file(prior_manifest)
+            if not isinstance(prior_doc, dict) or prior_doc.get("status") not in {"approved", "superseded"}:
+                result.add_error(
+                    "manifest_rerun_of_unknown_run_fails",
+                    f"rerun_of={rerun_of!r} run is present but not in an approved/superseded state",
+                    **common,
+                )
+
+    # Frontend global lane rules (§20).
+    global_refs = manifest.get("global_evidence_refs") if isinstance(manifest.get("global_evidence_refs"), dict) else {}
+    fq_ref = global_refs.get("frontend_quality") if isinstance(global_refs, dict) else None
+    fq_candidates = [fq_ref] if isinstance(fq_ref, str) else (
+        [v for v in fq_ref if isinstance(v, str)] if isinstance(fq_ref, list) else []
+    )
+    for candidate in fq_candidates:
+        target = relative_json_path(result.product_root, candidate)
+        if not target.exists():
+            result.add_error(
+                "frontend_global_ref_missing_fails",
+                f"frontend_quality reference {candidate!r} does not resolve",
+                **common,
+            )
+            continue
+        loaded, _ = load_json_file(target)
+        if not isinstance(loaded, dict):
+            result.add_error(
+                "frontend_quality_bad_latest_run_fails",
+                f"frontend-quality latest-run at {candidate!r} is unparseable or not an object",
+                **common,
+            )
+            continue
+        if loaded.get("status") != "approved":
+            result.add_error(
+                "frontend_quality_bad_latest_run_fails",
+                f"frontend-quality latest-run at {candidate!r} status must be 'approved'",
+                **common,
+            )
+    fux_ref = global_refs.get("frontend_ux") if isinstance(global_refs, dict) else None
+    fux_candidates = [fux_ref] if isinstance(fux_ref, str) else (
+        [v for v in fux_ref if isinstance(v, str)] if isinstance(fux_ref, list) else []
+    )
+    for candidate in fux_candidates:
+        target = relative_json_path(result.product_root, candidate)
+        if not target.exists():
+            result.add_error(
+                "frontend_ux_ref_missing_fails",
+                f"frontend_ux reference {candidate!r} does not resolve",
+                **common,
+            )
+
+    # frontend_true_without_feature_test_notes_fails / frontend_global_substituted_for_feature_report_fails.
+    if manifest.get("frontend_in_scope") is True and stage in {"G2", "G3", "G4.5", "G4.6", "G4.7", "closeout"}:
+        te_path = run_folder / "test-execution-report.md"
+        te_content = safe_read(te_path) or ""
+        cleaned = te_content.strip()
+        if cleaned and "frontend" not in cleaned.casefold():
+            result.add_error(
+                "frontend_true_without_feature_test_notes_fails",
+                "frontend_in_scope=true but test-execution-report.md has no feature-level frontend notes",
+                **common,
+            )
+        if cleaned:
+            body_lines = [line for line in cleaned.splitlines() if line.strip() and not line.lstrip().startswith("#")]
+            non_ref_lines = [line for line in body_lines if "frontend-quality" not in line and "frontend-ux" not in line]
+            if body_lines and not non_ref_lines:
+                result.add_error(
+                    "frontend_global_substituted_for_feature_report_fails",
+                    "test-execution-report.md only points at the global frontend lane; feature-level notes are required",
+                    **common,
+                )
+
+    # stage_g4_7_requires_tracker_results_fails — at G4.7/closeout the
+    # lifecycle-gates.log must reference the tracker-sync invocation.
+    if stage in {"G4.7", "closeout"}:
+        log_path = run_folder / "lifecycle-gates.log"
+        log_content = safe_read(log_path) or ""
+        if not re.search(r"validate-trackers|tracker.?sync", log_content, re.IGNORECASE):
+            result.add_error(
+                "stage_g4_7_requires_tracker_results_fails",
+                "G4.7/closeout requires tracker-sync results to appear in lifecycle-gates.log before final validation",
+                **common,
+            )
+
+    # Artifact-reference cross-checks (§10 / §21).
+    coverage_content = safe_read(run_folder / "coverage-report.md") or ""
+    for ref in re.findall(r"artifacts/coverage/[^\s)\]]+", coverage_content):
+        if not (run_folder / ref).exists():
+            result.add_error(
+                "coverage_claim_without_artifact_fails",
+                f"coverage-report.md references {ref!r} but the artifact is missing",
+                **common,
+            )
+    te_content = safe_read(run_folder / "test-execution-report.md") or ""
+    for ref in re.findall(r"artifacts/test-results/[^\s)\]]+", te_content):
+        if not (run_folder / ref).exists():
+            result.add_error(
+                "test_results_reference_missing_fails",
+                f"test-execution-report.md references {ref!r} but the artifact is missing",
+                **common,
+            )
+    sec_content = safe_read(run_folder / "security-review-report.md") or ""
+    for ref in re.findall(r"artifacts/security/[^\s)\]]+", sec_content):
+        if not (run_folder / ref).exists():
+            result.add_error(
+                "security_scan_reference_missing_fails",
+                f"security-review-report.md references {ref!r} but the artifact is missing",
+                **common,
+            )
+    for source in ("test-execution-report.md", "code-review-report.md"):
+        body = safe_read(run_folder / source) or ""
+        for ref in re.findall(r"artifacts/screenshots/[^\s)\]]+", body):
+            if not (run_folder / ref).exists():
+                result.add_error(
+                    "screenshot_reference_missing_fails",
+                    f"{source} references {ref!r} but the screenshot is missing",
+                    **common,
+                )
+
+    # changed_paths_mismatch_fails (§21) — role reports may mention paths that
+    # the manifest's changed_paths does not cover. Limited to the obvious
+    # surface (code-review-report.md) to keep false positives down.
+    if stage in {"G4.5", "G4.6", "G4.7", "closeout"} and manifest.get("rerun_of") is None:
+        changed_paths_list = manifest.get("changed_paths") or []
+        manifest_paths = [str(p) for p in changed_paths_list if isinstance(p, str)]
+        if manifest_paths:
+            cr_content = safe_read(run_folder / "code-review-report.md") or ""
+            mentioned = set(re.findall(r"(?:engine|experience|neuron|planning-mds|api|scripts)/[\w./\-]+", cr_content))
+            uncovered = sorted(m for m in mentioned if not _is_covered_by(m, manifest_paths))
+            if uncovered:
+                result.add_error(
+                    "changed_paths_mismatch_fails",
+                    f"code-review-report.md mentions paths not covered by manifest.changed_paths: {uncovered[:5]!r}",
+                    **common,
+                )
+
+    # deferred_blocker_passes_fails (§18) — a critical recommendation deferred
+    # without explicit PM mitigation language with a passing closeout.
+    if stage in {"G4.7", "closeout"}:
+        pm_content = safe_read(run_folder / "pm-closeout.md") or ""
+        for filename in RECOMMENDATION_BEARING_REPORTS:
+            content = safe_read(run_folder / filename) or ""
+            for rec in parse_recommendations(content):
+                if rec.severity == "critical" and "defer" in (rec.follow_up or "").casefold():
+                    rec_text_lower = rec.text.casefold()
+                    pm_lower = pm_content.casefold()
+                    if "mitigation:" not in pm_lower or rec_text_lower not in pm_lower:
+                        result.add_error(
+                            "deferred_blocker_passes_fails",
+                            f"{filename} defers a critical recommendation without PM mitigation acceptance",
+                            **common,
+                        )
+                        break
+
+
 def validate_cross_artifact_consistency(
     row: RegistryRow,
     manifest: dict[str, Any],
@@ -2567,6 +2890,7 @@ def validate_cross_artifact_consistency(
     validate_cross_artifact_recommendations(row, manifest, run_folder, stage, result)
     validate_omissions_filesystem(row, manifest, run_folder, result)
     validate_command_artifact_filesystem(row, manifest, run_folder, result)
+    validate_phase2b_additional_rules(row, manifest, manifest_path, run_folder, stage, result)
 
 
 # --------------------------------------------------------------------------- #
@@ -2798,8 +3122,14 @@ def validate(args: argparse.Namespace, product_root: Path, effective_date: date,
                 result.features_skipped_pre_contract_archived += 1
                 result.add_info("pre_contract_archived_explicit_target_info", "Pre-contract archived feature; completion evidence validation skipped", feature=row.feature_id)
                 return result, 0
-        if row.section == "Active Features" and not is_terminal_active(row):
-            return result, 0
+            if row_archived_date < effective_date and reentry is not None and reentry >= effective_date:
+                emit_reopened_reentry_rule_if_missing(row, product_root, result)
+        if row.section == "Active Features":
+            if not is_terminal_active(row):
+                return result, 0
+            _, shape = extract_closeout_review_date_with_shape(feature_path_for(product_root, row))
+            if shape == "malformed":
+                emit_malformed_closeout_date_rule_if_missing(row, product_root, result)
         validate_governed_row(row, result, stage, args.run_id, secret_scanner)
         return result, 1 if result.errors else 0
 

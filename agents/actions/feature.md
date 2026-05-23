@@ -150,6 +150,22 @@ When this action writes a new `latest-run.json` at G4.7/closeout, perform exactl
 
 If step 1 fails, do not proceed to step 2. Surface the failure with the operator runbook reference (`feature-evidence-package-standardization-plan-v2.md` §28 Phase 5 "Partial-closeout recovery"). Validator catch-rule `two_approved_runs_without_supersession_fails` enforces the invariant as defense in depth.
 
+### Per-Gate Evidence Validation (§17 / §24)
+
+Run `validate-feature-evidence.py` after producing each gate's artifacts so missing evidence is caught at the gate, not at closeout. Use the in-progress `--run-id` mode for gates before `latest-run.json` exists.
+
+| Gate | Command | Stage |
+|------|---------|-------|
+| G0   | `python3 agents/product-manager/scripts/validate-feature-evidence.py --product-root {PRODUCT_ROOT} --feature F#### --run-id {RUN_ID} --stage G0` | `G0` |
+| G1   | `python3 agents/product-manager/scripts/validate-feature-evidence.py --product-root {PRODUCT_ROOT} --feature F#### --run-id {RUN_ID} --stage G1` | `G1` |
+| G2   | `python3 agents/product-manager/scripts/validate-feature-evidence.py --product-root {PRODUCT_ROOT} --feature F#### --run-id {RUN_ID} --stage G2` | `G2` |
+| G3   | `python3 agents/product-manager/scripts/validate-feature-evidence.py --product-root {PRODUCT_ROOT} --feature F#### --run-id {RUN_ID} --stage G3` | `G3` |
+| G4.5 | `python3 agents/product-manager/scripts/validate-feature-evidence.py --product-root {PRODUCT_ROOT} --feature F#### --run-id {RUN_ID} --stage G4.5` | `G4.5` |
+| G4.6 | `python3 agents/product-manager/scripts/validate-feature-evidence.py --product-root {PRODUCT_ROOT} --feature F#### --run-id {RUN_ID} --stage G4.6` | `G4.6` candidate validation; runs **before** tracker sync per §17 step 1-2 |
+| G4.7 | `python3 agents/product-manager/scripts/validate-feature-evidence.py --product-root {PRODUCT_ROOT} --feature F#### --stage closeout` | After §17 step 4 completes — `latest-run.json` and `pm-closeout.md` must exist; tracker results must be in `lifecycle-gates.log` |
+
+Stage-validation failures must be repaired before advancing the gate. Do not skip stage validation even when the missing artifact "will land later" — §17's stage matrix declares exactly which artifacts must exist by stage.
+
 ## Stop Conditions
 
 - Runtime preflight fails and cannot be restored
@@ -165,11 +181,13 @@ If step 1 fails, do not proceed to step 2. Surface the failure with the operator
 Run in this order:
 
 1. Applicable backend / frontend / AI / QE runtime commands for changed surfaces, with evidence paths recorded under `{PRODUCT_ROOT}/planning-mds/operations/evidence/**`
-2. `python3 agents/product-manager/scripts/validate-trackers.py`
-3. `python3 agents/product-manager/scripts/generate-story-index.py {PRODUCT_ROOT}/planning-mds/features/` when stories changed
-4. `python3 {PRODUCT_ROOT}/scripts/kg/validate.py --regenerate-symbols` when code in bound files changed
-5. `python3 {PRODUCT_ROOT}/scripts/kg/validate.py --write-coverage-report` when KG changed
-6. `python3 {PRODUCT_ROOT}/scripts/kg/validate.py --check-symbols`
+2. `python3 agents/product-manager/scripts/validate-feature-evidence.py --product-root {PRODUCT_ROOT} --feature F#### --run-id {RUN_ID} --stage G4.6` (candidate validation before tracker sync per §17 step 1)
+3. `python3 agents/product-manager/scripts/validate-trackers.py` (calls feature-evidence at `--stage G4.6` per §22; appends tracker results to `lifecycle-gates.log`)
+4. After §17 step 4 completes (`patch-prior-manifest.py` then `latest-run.json`): `python3 agents/product-manager/scripts/validate-feature-evidence.py --product-root {PRODUCT_ROOT} --feature F#### --stage closeout`
+5. `python3 agents/product-manager/scripts/generate-story-index.py {PRODUCT_ROOT}/planning-mds/features/` when stories changed
+6. `python3 {PRODUCT_ROOT}/scripts/kg/validate.py --regenerate-symbols` when code in bound files changed
+7. `python3 {PRODUCT_ROOT}/scripts/kg/validate.py --write-coverage-report` when KG changed
+8. `python3 {PRODUCT_ROOT}/scripts/kg/validate.py --check-symbols`
 7. `python3 {PRODUCT_ROOT}/scripts/kg/validate.py --check-drift`
 8. `python3 agents/scripts/validate_templates.py`
 
