@@ -282,7 +282,31 @@
       "Bash(awk -F'\\\\t' '{printf \"%8d bytes  ~%6d tok  %s\\\\n\", $1, $1/4, $2}')",
       "Bash(xargs -I{} sh -c 'echo \"FILE: {}\"; head -40 \"{}\"')",
       "WebSearch",
-      "WebFetch(domain:developers.openai.com)"
+      "WebFetch(domain:developers.openai.com)",
+      "Bash(echo \"LOOKUP_EXIT=$?\")",
+      "Bash(sed -n '1,40p' planning-mds/knowledge-graph/feature-mappings.yaml)",
+      "Bash(awk '/^  F0022:/{f=1} f{print} /^  F0023:/{if\\(f\\)exit}' planning-mds/knowledge-graph/feature-mappings.yaml)",
+      "Bash(grep -nE '^#{1,3} ' planning-mds/examples/personas/nebula-personas.md)",
+      "Bash(echo \"WRITE_COV_EXIT=$?\")",
+      "Bash(echo \"CHECK_DRIFT_EXIT=$?\")",
+      "Bash(tail -3 /tmp/cov.txt)",
+      "Bash(grep -E \"^\\\\[\\(PASS|FAIL\\)\\\\]|Feature coverage:\" /tmp/val.txt)",
+      "Bash(grep -A3 \"^Errors:\" /tmp/val.txt)",
+      "Bash(grep -E \"^\\\\[\\(PASS|FAIL\\)\\\\]\" /tmp/drift.txt)",
+      "Bash(grep -A3 \"^Errors:\" /tmp/drift.txt)",
+      "Bash(echo \"GSI_EXIT=$?\")",
+      "Bash(echo \"VS_EXIT=$?\")",
+      "Bash(echo \"VT_EXIT=$?\")",
+      "Bash(grep -rh 'Non-Functional Expectations' __TRACKED_VAR__/planning-mds/features/)",
+      "Bash(echo \"WCOV=$?\")",
+      "Bash(echo \"VAL=$?\")",
+      "Bash(sed -n '/^Errors:/,$p' /tmp/val2.txt)",
+      "Bash(echo \"DRIFT=$?\")",
+      "Bash(echo \"GSI=$?\")",
+      "Bash(echo \"VS_F37=$?\")",
+      "Bash(echo \"VT=$?\")",
+      "Bash(:)",
+      "Bash(grep -nE '^#{1,3} ' planning-mds/architecture/data-model.md)"
     ]
   }
 }

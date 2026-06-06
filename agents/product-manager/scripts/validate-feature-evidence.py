@@ -111,6 +111,17 @@ STAGE_REQUIRED_GATES: dict[str, list[str]] = {
     "closeout": ["G0", "G1", "G2", "G3", "G4", "G5", "G6", "G7", "G8"],
 }
 
+
+def kg_reconciliation_required(manifest: dict[str, Any], stage: str) -> bool:
+    """Whether this run must carry the G7 KG reconciliation package."""
+    manifest_effective = parse_iso_date(str(manifest.get("contract_effective_date", "")))
+    return (
+        stage in {"G7", "G8", "closeout"}
+        and manifest_effective is not None
+        and manifest_effective >= KG_RECONCILIATION_EFFECTIVE_DATE
+    )
+
+
 # §10 / §17 — which run-folder files must exist for a given stage.
 def stage_required_files(stage: str, runtime_bearing: bool, security_required: bool) -> list[str]:
     base = [
@@ -151,7 +162,6 @@ def stage_required_files(stage: str, runtime_bearing: bool, security_required: b
     base.append("feature-action-execution.md")
     if stage == "G6":
         return base
-    base.append("kg-reconciliation.md")
     if stage == "G7":
         return base
     base.append("pm-closeout.md")
@@ -1304,11 +1314,7 @@ def validate_manifest_deep(
     # The architect binds the as-built source into the semantic graph at G7;
     # closeout requires the gate result to be present and passing. Gated on the
     # run's own contract_effective_date so earlier packages stay valid.
-    if (
-        stage in {"G8", "closeout"}
-        and manifest_effective is not None
-        and manifest_effective >= KG_RECONCILIATION_EFFECTIVE_DATE
-    ):
+    if kg_reconciliation_required(manifest, stage):
         gate_results = manifest.get("gate_results")
         kg_gate = gate_results.get("kg_reconciliation") if isinstance(gate_results, dict) else None
         if not isinstance(kg_gate, dict):
@@ -1402,12 +1408,7 @@ def validate_required_artifacts(
 
     # G7 architect KG reconciliation artifact (date-gated; see
     # KG_RECONCILIATION_EFFECTIVE_DATE). Earlier packages stay exempt.
-    manifest_effective = parse_iso_date(str(manifest.get("contract_effective_date", "")))
-    if (
-        stage in {"G8", "closeout"}
-        and manifest_effective is not None
-        and manifest_effective >= KG_RECONCILIATION_EFFECTIVE_DATE
-    ):
+    if kg_reconciliation_required(manifest, stage):
         expected = expected + ["kg-reconciliation.md"]
 
     artifact_rule_map = {
@@ -1499,7 +1500,13 @@ def validate_required_artifacts(
 # --------------------------------------------------------------------------- #
 
 
-def validate_gate_decisions(run_folder: Path, stage: str, row: RegistryRow, result: Result) -> None:
+def validate_gate_decisions(
+    run_folder: Path,
+    manifest: dict[str, Any],
+    stage: str,
+    row: RegistryRow,
+    result: Result,
+) -> None:
     path = run_folder / "gate-decisions.md"
     content = safe_read(path)
     if content is None:
@@ -1508,6 +1515,8 @@ def validate_gate_decisions(run_folder: Path, stage: str, row: RegistryRow, resu
     rows = parse_table(section)
     present = {strip_code(entry.get("Gate", "")).upper() for entry in rows}
     required = STAGE_REQUIRED_GATES.get(stage, [])
+    if not kg_reconciliation_required(manifest, stage):
+        required = [gate for gate in required if gate != "G7"]
     missing = [gate for gate in required if gate.upper() not in present]
     if missing:
         result.add_error(
@@ -1520,7 +1529,7 @@ def validate_gate_decisions(run_folder: Path, stage: str, row: RegistryRow, resu
         result.add_error("gate_decisions_missing_g5_fails", "gate-decisions.md missing G5 row", feature=row.feature_id, path=str(path))
     if stage in {"G6", "G7", "G8", "closeout"} and "G6" not in present:
         result.add_error("gate_decisions_missing_g6_fails", "gate-decisions.md missing G6 row", feature=row.feature_id, path=str(path))
-    if stage in {"G7", "G8", "closeout"} and "G7" not in present:
+    if kg_reconciliation_required(manifest, stage) and "G7" not in present:
         result.add_error("gate_decisions_missing_g7_fails", "gate-decisions.md missing G7 row", feature=row.feature_id, path=str(path))
     if stage in {"G8", "closeout"} and "G8" not in present:
         result.add_error("gate_decisions_missing_g8_fails", "gate-decisions.md missing G8 row", feature=row.feature_id, path=str(path))
@@ -2128,6 +2137,8 @@ def validate_role_and_gate_results(
         result.add_error("manifest_missing_gate_results_fails", "Manifest gate_results must be an object", **common)
         gate_results = {}
     for key, spec in GATE_SPEC.items():
+        if key == "kg_reconciliation" and not kg_reconciliation_required(manifest, stage):
+            continue
         if not gate_required_at_stage(key, stage, runtime_bearing):
             continue
         entry = gate_results.get(key)
@@ -2254,6 +2265,8 @@ def validate_role_and_gate_results(
             if role_required_at_stage(role_name, stage, manifest, status_required):
                 required_artifacts.update(spec["required_artifacts"])
         for key, gate_spec in GATE_SPEC.items():
+            if key == "kg_reconciliation" and not kg_reconciliation_required(manifest, stage):
+                continue
             if gate_required_at_stage(key, stage, runtime_bearing):
                 required_artifacts.add(gate_spec["artifact"])
         for omission in omissions:
@@ -3235,7 +3248,7 @@ def validate_governed_row(
         if run_folder.exists():
             status_required = parse_status_required_roles(row, result)
             validate_required_artifacts(row, manifest, run_folder, stage, result)
-            validate_gate_decisions(run_folder, stage, row, result)
+            validate_gate_decisions(run_folder, manifest, stage, row, result)
             validate_lifecycle_gates(run_folder, row, result)
             validate_commands_log(run_folder, manifest, secret_scanner, row, result)
             validate_role_and_gate_results(row, manifest, run_folder, stage, result, status_required)
