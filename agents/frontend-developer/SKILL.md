@@ -237,38 +237,7 @@ Also run `lookup.py --symbol <name>` (or `hint.py --symbol <name>`) before editi
 
 ## Experience Directory Structure
 
-```
-{PRODUCT_ROOT}/experience/
-├── src/
-│   ├── components/          # Reusable components
-│   │   ├── ui/              # shadcn/ui components
-│   │   ├── forms/           # Form components
-│   │   ├── layouts/         # Layout components
-│   │   └── shared/          # Shared business components
-│   ├── pages/               # Route-level page components
-│   ├── features/            # Feature-specific modules
-│   │   ├── customers/
-│   │   ├── accounts/
-│   │   ├── orders/
-│   │   └── tasks/
-│   ├── hooks/               # Custom React hooks
-│   ├── lib/                 # Utilities and helpers
-│   │   ├── api/             # API client functions
-│   │   ├── auth/            # Authentication utilities
-│   │   ├── validation/      # AJV setup and utilities
-│   │   └── utils/           # Generic utilities
-│   ├── schemas/             # JSON Schema validation schemas (shared with backend)
-│   ├── types/               # TypeScript types/interfaces (generated from schemas)
-│   ├── styles/              # Global styles
-│   ├── App.tsx              # Root app component
-│   └── main.tsx             # Entry point
-├── tests/                   # Test files
-├── public/                  # Static assets
-├── package.json
-├── vite.config.ts
-├── tailwind.config.js
-└── tsconfig.json
-```
+Use the product repo's existing `{PRODUCT_ROOT}/experience/` layout. Prefer feature-local modules under `src/features/<feature>/` and keep only reusable primitives, app shell, routing/providers, and generic utilities in shared/global directories.
 
 ### Frontend Module Boundary Rule (Important for `{PRODUCT_ROOT}/experience/src`)
 

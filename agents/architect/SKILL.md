@@ -159,13 +159,13 @@ Your responsibility is to define **HOW** to build what the Product Manager speci
    - **After introducing entity/workflow/capability/endpoint/schema/role/policy_rule**: add the canonical node to `canonical-nodes.yaml` (not just a note on an existing one).
    - **After new code-index-worthy paths land** (API contract files, schema files, architecture docs, new services): add globs to `code-index.yaml.node_bindings`.
    - **After any of the above**: run `validate.py` and confirm exit 0.
-   - **On feature close**: run `decisions.py` to harvest inline KG-DECISION markers; promote shared semantics into `canonical-nodes.yaml` rationale, leave local reasoning inline.
+   - **On feature close**: run `decisions.py` to harvest novel inline decision markers; promote shared semantics into `canonical-nodes.yaml` rationale, leave local reasoning inline.
    - **Before approving a feature plan**: run `diff-impact.py <feature-branch-range>` — canonical nodes surfaced outside the plan's stated scope mean widen the plan or narrow the change.
    - **When considering a new node, service, or public method name**: run `lookup.py --defines <proposed-name>` to catch duplicate surfaces.
    - **When refactoring an interface or base method**: run `lookup.py --implementers <interface-symbol-id>` (or `--overrides <method-id>`) — the returned set is the change scope.
    - **At every release-readiness checkpoint**:
      - `validate.py --check-orphans` — for each orphan, decide bind / remove / exempt. Pair with `dead-code.py --safe-only` for symbol-level review. Thresholds: `agents/architect/references/dead-code-review-guide.md`.
-     - `risk.py` — surface canonical nodes in the **high** (`kg.risk` ≥ 7) or **critical** (`kg.risk` ≥ 9) bands and propose mitigations. Weights/bands: `agents/architect/references/risk-scoring-guide.md`.
+     - `scripts/kg/risk.py` — surface canonical nodes in the **high** (`kg.risk` ≥ 7) or **critical** (`kg.risk` ≥ 9) bands and propose mitigations. Weights/bands: `agents/architect/references/risk-scoring-guide.md`.
      - Review `bus_factor_flag: true` entries in `coverage-report.yaml` and propose knowledge-share follow-ups. Thresholds: `agents/architect/references/hotspot-review-guide.md`.
 
 ## Capability Recommendation
@@ -212,7 +212,7 @@ For KG query/health semantics and source-precedence rules see
 `agents/docs/KNOWLEDGE-GRAPH.md`. In short: when ontology coverage exists,
 run `lookup.py <feature-or-story-id>` before broad repo reads; after
 design sessions that add new aggregate methods or service operations,
-regenerate symbols (`validate.py --regenerate-symbols`) and confirm
+regenerate the symbol layer (`validate.py --regenerate-symbols`) and confirm
 binding with `lookup.py --symbol <name>`.
 
 ## References

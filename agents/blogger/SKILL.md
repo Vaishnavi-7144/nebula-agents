@@ -134,27 +134,22 @@ Use the post type that matches user intent and evidence available.
 #### 1. DevLog
 - Purpose: progress update
 - Best for: weekly or milestone summaries
-- Typical length: 800–1200 words
 
 #### 2. Technical Deep Dive
 - Purpose: explain design or implementation details
 - Best for: architecture, workflow, integration patterns
-- Typical length: 1400–2200 words
 
 #### 3. Tutorial
 - Purpose: teach a repeatable approach
 - Best for: implementation walkthroughs with runnable examples
-- Typical length: 1500–2500 words
 
 #### 4. Case Study
 - Purpose: frame a problem-solution-results arc
 - Best for: difficult tradeoff or measurable improvement
-- Typical length: 1200–2000 words
 
 #### 5. Retrospective
 - Purpose: reflect on what worked and what did not
 - Best for: phase or release completion
-- Typical length: 900–1600 words
 
 ### Phase 1 Workflow
 
