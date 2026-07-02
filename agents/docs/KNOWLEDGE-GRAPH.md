@@ -184,7 +184,7 @@ which all live at `{PRODUCT_ROOT}/scripts/kg/` and are agent-agnostic
 | `lookup.py F0007-S0003` | Same shape, scoped to one story |
 | `lookup.py F0007 --tier 1` | Minimal scope (target + direct refs only) |
 | `lookup.py F0007 --tier 2/3/4` | Progressive expansion (one hop, two hops, full) |
-| `lookup.py F0007 --fields target,affects` | Project specific top-level fields only |
+| `lookup.py F0007 --fields ids` | Trim resolved-node summaries to ids only (`--fields ids\|summaries\|full`, default `full`) — verbosity *within* the selected tier, not field projection |
 | `lookup.py F0007 --allow-missing` | Don't error on unmapped — useful for greenfield Phase A stubs |
 | `lookup.py --file engine/src/Foo.cs` | Reverse lookup: file → canonical nodes → features/stories |
 | `lookup.py --symbol <method-name>` | Symbols matching name with their containing node |
@@ -226,6 +226,41 @@ know what else moves with you.
 | `workstate.py --state-file <p> escalate "<reason>" --nodes ... --opened-raw ...` | Record an explicit insufficient-context climb |
 | `workstate.py --state-file <p> dump --compact` | Recover structured state after context compaction |
 | `workstate.py --state-file <p> dump --current-view` | Decisions with superseded topics filtered out |
+| `workstate.py --state-file <p> digest` | Terse work-narrative (done / decided / next) — cheaper to rehydrate on resume than a full `dump` |
+
+### MCP server (same retrieval, structured transport)
+
+For harnesses that speak MCP, the same retrieval is exposed as local stdio tools by
+`{PRODUCT_ROOT}/scripts/kg/mcp_server.py` (committed `{PRODUCT_ROOT}/.mcp.json` launches
+it). It is a thin adapter over the **same** CLI builders — identical semantics, minified
+JSON payloads, telemetry tagged `source="mcp"`. The CLIs above remain the implementation
+and the fallback for non-MCP harnesses.
+
+| MCP tool | Wraps | Notes |
+|----------|-------|-------|
+| `kg_context` | `lookup.py` | feature/story slice or reverse file lookup; `fields=ids\|summaries\|full`, `tier 1-4`, `include` for top-level projection |
+| `kg_hint` | `hint.py` | pre-search routing; returns a structured (possibly empty) payload |
+| `kg_blast` | `blast.py` | impact radius; `compact` for summary only |
+| `kg_validate` | `validate.py` (read-only modes) | `check-drift\|check-symbols\|check-orphans\|check-coverage-gaps` → `{ok, errors, warnings}`; never mutates |
+| `kg_workstate` | `workstate.py` | the only writer; actions init/decision/escalate/dump/digest; writes **only** under `{PRODUCT_ROOT}/.kg-state/workstate/<session>.yaml` (traversal/KG-dir writes rejected) |
+
+**Launch config — two cases:**
+
+- Session launched **from `{PRODUCT_ROOT}`** → the committed `{PRODUCT_ROOT}/.mcp.json`:
+  ```json
+  { "mcpServers": { "kg": { "command": "python3", "args": ["scripts/kg/mcp_server.py"] } } }
+  ```
+- Session launched **from the `nebula-agents` framework cwd** → the relative path won't
+  resolve, so point at the product copy via `NEBULA_PRODUCT_ROOT` (the same env the
+  framework already uses to locate the product repo — see AGENT-USE.md §resolution):
+  ```json
+  { "mcpServers": { "kg": { "command": "python3",
+      "args": ["${NEBULA_PRODUCT_ROOT}/scripts/kg/mcp_server.py"] } } }
+  ```
+
+The server self-locates the KG from its own file path, so no `PRODUCT_ROOT` env is needed
+at runtime — only the launch path must resolve. MCP-capable harnesses should prefer the
+`kg_*` tools; the CLIs above are the fallback for harnesses without MCP.
 
 ### Other CLIs
 
@@ -365,6 +400,10 @@ Adding a new validator mode:
 
 ## Cross-References
 
+- `agents/docs/CONTEXT-ENGINEERING.md` — the context-engineering strategy
+  (select / compress / write / isolate) the KG query layer, tiering, and
+  `workstate.py` serve. This doc is the *how the KG works*; that one is the
+  *why it's shaped for context*.
 - `agents/ROUTER.md` — task-to-reference routing; KG tools row points here.
 - `agents/docs/AGENT-USE.md` — session setup and prompt patterns; defers
   KG mechanics to this doc.
